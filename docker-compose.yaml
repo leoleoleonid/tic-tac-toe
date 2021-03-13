@@ -1,0 +1,31 @@
+# docker-compose.yml
+version: "3"
+services:
+  react-app:
+    build: ./client
+    depends_on:
+      - api
+    stdin_open: true
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/client/
+      - /client/node_modules
+    networks:
+      - tic-tac-toe-app
+  api:
+    build: ./api
+    environment:
+      NODE_ENV: development
+      PORT: 8080
+    ports:
+      - "8080:8080"
+#    command: npm run dev
+    volumes:
+      - .:/api/
+      - /api/node_modules
+    networks:
+      - tic-tac-toe-app
+networks:
+  tic-tac-toe-app:
+    driver: bridge
