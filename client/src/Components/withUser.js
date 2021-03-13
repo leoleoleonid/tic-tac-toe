@@ -27,7 +27,6 @@ const withUser = (WrappedComponent) => {
 		}
 
 		useEffect(() => {
-			console.log("WITH_USER DID remOUNT");
 
 			socket.on("session", ({ sessionID, userID }) => {
 				// attach the session ID to the next reconnection attempts
@@ -45,7 +44,6 @@ const withUser = (WrappedComponent) => {
 			});
 
 			return () => {
-				console.log("WITH_USER DID UNMOUNT");
 				socket.off("connect_error");
 			}
 		}, [usernameSelected]);

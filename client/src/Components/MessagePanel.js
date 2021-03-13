@@ -1,7 +1,6 @@
 import {useState, useEffect} from "react";
 
 function MessagePanel(props) {
-	console.log('remoutn all panel')
 	const [input, setInput] = useState('');
 	const isValid = input.length > 0;
 	function onSubmit(event) {

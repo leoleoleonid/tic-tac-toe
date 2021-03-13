@@ -11,7 +11,6 @@ function App() {
 
 
   useEffect(() => {
-    console.log("APP DID reMOUNT");
 
     socket.on("connect", () => {
       const usersNew = [...users];
@@ -33,10 +32,6 @@ function App() {
       setUsers(usersNew);
     });
 
-    const initReactiveProperties = (user) => {
-      user.hasNewMessages = false;
-    };
-
     socket.on("users", (receivedUsers) => {
       const newUsers = [...users];
       receivedUsers.forEach((receivedUser) => {
@@ -52,7 +47,7 @@ function App() {
           }
         }
         receivedUser.self = receivedUser.userID === socket.userID;
-        initReactiveProperties(receivedUser);
+        receivedUser.hasNewMessages = false;
         newUsers.push(receivedUser);
       });
       // put the current user first, and sort by username
@@ -72,10 +67,11 @@ function App() {
         const existingUser = newUsers[i];
         if (existingUser.userID === user.userID) {
           existingUser.connected = true;
+          setUsers(newUsers);
           return;
         }
       }
-      initReactiveProperties(user);
+      user.hasNewMessages = false;
       newUsers.push(user);
 
       setUsers(newUsers);
@@ -96,8 +92,6 @@ function App() {
     socket.on("private message", ({ content, from, to }) => {
       const newUsers = [...users];
 
-      console.log('socket.on("private message"');
-
       for (let i = 0; i < newUsers.length; i++) {
         const user = newUsers[i];
         const fromSelf = socket.userID === from;
@@ -116,9 +110,7 @@ function App() {
       setUsers(newUsers);
     });
 
-
     return () => {
-      console.log("APP DID UNMOUNT");
       socket.off("connect");
       socket.off("disconnect");
       socket.off("users");
@@ -132,8 +124,8 @@ function App() {
     const newUsers = [...users];
     for (let i = 0; i < newUsers.length; i++) {
       const existingUser = newUsers[i];
-      if (existingUser.userID === users.userID) {
-        existingUser.hasNewMessages = false
+      if (existingUser.userID === user.userID) {
+        existingUser.hasNewMessages = false;
         break;
       }
     }
@@ -142,7 +134,6 @@ function App() {
   }
 
   function onMessage(content) {
-    console.log('onMessage')
     if (selectedUser) {
       socket.emit("private message", {
         content,

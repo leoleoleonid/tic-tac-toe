@@ -91,7 +91,6 @@ io.on("connection", (socket) => {
       from: socket.userID,
       to,
     };
-    console.log('private message',content, to)
     socket.to(to).to(socket.userID).emit("private message", message);
     messageStore.saveMessage(message);
   });
