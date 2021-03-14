@@ -1,12 +1,12 @@
 FROM node:lts
 
-WORKDIR /client
+WORKDIR /app
 COPY package.json ./
 COPY package-lock.json ./
 COPY . ./
-RUN chown -R node:node /client
+RUN chown -R node:node /app
 USER node
 RUN npm ci
 
-EXPOSE 3000
+EXPOSE 8080
 CMD npm start
