@@ -10,6 +10,14 @@ class InMemorySessionStore extends SessionStore {
     this.sessions = new Map();
   }
 
+  findSessionByUserId(userID) {
+    for (const [id, session] of this.sessions) {
+      if (session.userID === userID) {
+        return session;
+      }
+    }
+  }
+
   findSession(id) {
     return this.sessions.get(id);
   }

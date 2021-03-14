@@ -1,15 +1,13 @@
 import withUser from './Components/withUser';
 import User from './Components/User';
-import MessagePanel from './Components/MessagePanel';
+import GameBoard from './Components/GameBoard';
 import './App.css';
 import {useState, useEffect} from "react";
 import socket from "./socket";
 
 function App() {
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUser, setSelectedUser] = useState({});
   const [users, setUsers] = useState([]);
-
-
   useEffect(() => {
 
     socket.on("connect", () => {
@@ -35,19 +33,15 @@ function App() {
     socket.on("users", (receivedUsers) => {
       const newUsers = [...users];
       receivedUsers.forEach((receivedUser) => {
-        receivedUser.messages.forEach((message) => {
-          message.fromSelf = message.from === socket.userID;
-        });
         for (let i = 0; i < newUsers.length; i++) {
           const existingUser = newUsers[i];
           if (existingUser.userID === receivedUser.userID) {
             existingUser.connected = receivedUser.connected;
-            existingUser.messages = receivedUser.messages;
             return;
           }
         }
         receivedUser.self = receivedUser.userID === socket.userID;
-        receivedUser.hasNewMessages = false;
+        receivedUser.hasOngoingGame = Boolean(receivedUser.gameId);
         newUsers.push(receivedUser);
       });
       // put the current user first, and sort by username
@@ -71,9 +65,8 @@ function App() {
           return;
         }
       }
-      user.hasNewMessages = false;
+      user.hasOngoingGame = false;
       newUsers.push(user);
-
       setUsers(newUsers);
     });
 
@@ -89,21 +82,19 @@ function App() {
       setUsers(newUsers);
     });
 
-    socket.on("private message", ({ content, from, to }) => {
+    socket.on("return game data", ({gameData, gameId, player1, player2}) => {
       const newUsers = [...users];
 
       for (let i = 0; i < newUsers.length; i++) {
-        const user = newUsers[i];
-        const fromSelf = socket.userID === from;
-        if (user.userID === (fromSelf ? to : from)) {
-          user.messages.push({
-            content,
-            fromSelf,
-          });
-          if (user !== selectedUser) {
-            user.hasNewMessages = true;
+        const existingUser = newUsers[i];
+        if (existingUser.userID === player1 || existingUser.userID === player2) {
+          existingUser.hasOngoingGame = true;
+          existingUser.gameId = gameId;
+          existingUser.gameData = gameData;
+
+          if (selectedUser?.userID === existingUser.userID) {
+            setSelectedUser(existingUser);
           }
-          break;
         }
       }
 
@@ -116,39 +107,36 @@ function App() {
       socket.off("users");
       socket.off("user connected");
       socket.off("user disconnected");
-      socket.off("private message");
+      socket.off("return game data");
     }
   }, [selectedUser, users]);
 
+  function startNewGame() {
+    socket.emit("get game", {
+      opponent: selectedUser.userID,
+      generateNew: true
+    });
+  }
+
   function onSelectUser(user) {
     const newUsers = [...users];
+    socket.emit("get game", {
+      opponent: user.userID,
+      generateNew: false
+    });
+
     for (let i = 0; i < newUsers.length; i++) {
       const existingUser = newUsers[i];
       if (existingUser.userID === user.userID) {
-        existingUser.hasNewMessages = false;
+        existingUser.hasOngoingGame = true;
         break;
       }
     }
+
     setUsers(newUsers);
     setSelectedUser(user);
   }
 
-  function onMessage(content) {
-    if (selectedUser) {
-      socket.emit("private message", {
-        content,
-        to: selectedUser.userID,
-      });
-      const updatedSelectedUser = {...selectedUser};
-
-      updatedSelectedUser.messages.push({
-        content,
-        fromSelf: true,
-      });
-
-      setSelectedUser(updatedSelectedUser);
-    }
-  }
 
   return (
     <div className="App">
@@ -165,10 +153,11 @@ function App() {
         })}
       </div>
       <div className="right-panel">
-        {selectedUser && (
-          <MessagePanel
-            onMessage={onMessage}
-            user={selectedUser}
+        {selectedUser.gameData && (
+          <GameBoard
+            gameData={selectedUser.gameData}
+            gameId={selectedUser.gameId}
+            startNewGame={startNewGame}
           />
         )}
       </div>

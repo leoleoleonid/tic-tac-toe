@@ -7,14 +7,27 @@ const io = require("socket.io")(httpServer, {
   },
 });
 
+const games = {}; // stores the ongoing game
+const winCombinations = [
+  [[0, 0], [0, 1], [0, 2]],
+  [[1, 0], [1, 1], [1, 2]],
+  [[2, 0], [2, 1], [2, 2]],
+  [[0, 0], [1, 0], [2, 0]],
+  [[0, 1], [1, 1], [2, 1]],
+  [[0, 2], [1, 2], [2, 2]],
+  [[0, 0], [1, 1], [2, 2]],
+  [[0, 2], [1, 1], [2, 0]]
+]; // game winning combination index
+
 const crypto = require("crypto");
 const randomId = () => crypto.randomBytes(8).toString("hex");
 
 const { InMemorySessionStore } = require("./src/stores/sessionStore");
 const sessionStore = new InMemorySessionStore();
 
-const { InMemoryMessageStore } = require("./src/stores/messageStore");
-const messageStore = new InMemoryMessageStore();
+const GameIdStore = require("./src/stores/gameIdStore");
+const gameIdStore = new GameIdStore();
+
 
 io.use((socket, next) => {
   const sessionID = socket.handshake.auth.sessionID;
@@ -56,22 +69,16 @@ io.on("connection", (socket) => {
 
   // fetch existing users
   const users = [];
-  const messagesPerUser = new Map();
-  messageStore.findMessagesForUser(socket.userID).forEach((message) => {
-    const { from, to } = message;
-    const otherUser = socket.userID === from ? to : from;
-    if (messagesPerUser.has(otherUser)) {
-      messagesPerUser.get(otherUser).push(message);
-    } else {
-      messagesPerUser.set(otherUser, [message]);
-    }
-  });
+
+  const gamesForUser = gameIdStore.findGamesForUser(socket.userID);
+
   sessionStore.findAllSessions().forEach((session) => {
     users.push({
       userID: session.userID,
       username: session.username,
       connected: session.connected,
-      messages: messagesPerUser.get(session.userID) || [],
+      gameId: gamesForUser.get(session.userID),
+      gameData: games[gamesForUser.get(session.userID)]
     });
   });
   socket.emit("users", users);
@@ -81,18 +88,96 @@ io.on("connection", (socket) => {
     userID: socket.userID,
     username: socket.username,
     connected: true,
-    messages: [],
+    messages: null,
   });
 
-  // forward the private message to the right recipient (and to other tabs of the sender)
-  socket.on("private message", ({ content, to }) => {
-    const message = {
-      content,
-      from: socket.userID,
-      to,
+  socket.on("get game", ({ opponent , generateNew}) => {
+    let gameId;
+
+    if (generateNew) {
+      const oldGameId = gameIdStore.deleteGameForCouple(opponent, socket.userID);
+      delete games[oldGameId];
+    } else {
+      gameId = gameIdStore.findGamesForUser(opponent).get(socket.userID);
+    }
+
+    if (gameId) {
+      const game = {
+        gameData: games[gameId],
+        gameId,
+        player1: socket.userID,
+        player2: opponent,
+      };
+
+      io.to(opponent).to(socket.userID).emit("return game data", game);
+      return;
+    }
+
+    const opponentSession = sessionStore.findSessionByUserId(opponent);
+    gameId = uuidv4();
+
+    games[gameId] = {
+      player1: socket.userID,
+      player2: opponent,
+      whose_turn: socket.userID,
+      playboard: [["", "", ""], ["", "", ""], ["", "", ""]],
+      game_status: "ongoing", // "ongoing","won","draw"
+      game_winner: null, // winner_id if status won
+      winning_combination: []
     };
-    socket.to(to).to(socket.userID).emit("private message", message);
-    messageStore.saveMessage(message);
+    games[gameId][socket.userID] = {
+      username: socket.username,
+      sign: "x"
+    };
+    games[gameId][opponent] = {
+      username: opponentSession.username,
+      sign: "o"
+    };
+    const game = {
+      gameData: games[gameId],
+      gameId,
+      player1: socket.userID,
+      player2: opponent,
+    };
+
+    io.to(opponent).to(socket.userID).emit("return game data", game);
+    gameIdStore.saveGame(socket.userID, opponent, gameId);
+  });
+
+  socket.on('selectCell', data => {
+    games[data.gameId].playboard[data.i][data.j] = games[data.gameId][games[data.gameId].whose_turn].sign;
+
+    let isDraw = true;
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        if (games[data.gameId].playboard[i][j] == "") {
+          isDraw = false;
+          break;
+        }
+      }
+    }
+    if (isDraw)
+      games[data.gameId].game_status = "draw";
+
+    for (let i = 0; i < winCombinations.length; i++) {
+      let tempComb = games[data.gameId].playboard[winCombinations[i][0][0]][winCombinations[i][0][1]] + games[data.gameId].playboard[winCombinations[i][1][0]][winCombinations[i][1][1]] + games[data.gameId].playboard[winCombinations[i][2][0]][winCombinations[i][2][1]];
+      if (tempComb === "xxx" || tempComb === "ooo") {
+        games[data.gameId].game_winner = games[data.gameId].whose_turn;
+        games[data.gameId].game_status = "won";
+        games[data.gameId].winning_combination = [[winCombinations[i][0][0], winCombinations[i][0][1]], [winCombinations[i][1][0], winCombinations[i][1][1]], [winCombinations[i][2][0], winCombinations[i][2][1]]];
+      }
+    }
+
+    games[data.gameId].whose_turn = games[data.gameId].whose_turn == games[data.gameId].player1 ? games[data.gameId].player2 : games[data.gameId].player1;
+
+    const responseData = {
+      gameData : games[data.gameId],
+      gameId : data.gameId,
+      player1 : games[data.gameId].player1,
+      player2 : games[data.gameId].player2
+    };
+
+    io.to(games[data.gameId].player1).to(games[data.gameId].player2).emit("return game data", responseData);
   });
 
   // notify users upon disconnection
@@ -116,3 +201,11 @@ const port = config.PORT;
 httpServer.listen(port, () => {
   console.log(`App started on port ${port}`);
 });
+
+// Generate Game ID
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    let r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
