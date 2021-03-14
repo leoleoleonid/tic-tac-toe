@@ -1,11 +1,21 @@
-const app = require("./src/app");
+const expressApp = require("./server/expressApp");
 const config = require('./config');
-const httpServer = require("http").createServer({}, app);
-const io = require("socket.io")(httpServer, {
-  cors: {
-    origin: config.FRONTEND_ORIGIN,
-  },
-});
+const httpServer = require("http").createServer({}, expressApp);
+const crypto = require("crypto");
+const { InMemorySessionStore } = require("./server/stores/sessionStore");
+const GameIdStore = require("./server/stores/gameIdStore");
+const socketIo = require("socket.io");
+
+let io;
+if(process.env.NODE_ENV === 'production') {
+  io = socketIo(httpServer);
+} else {
+  io = socketIo(httpServer, {
+    cors: {
+      origin: config.FRONTEND_ORIGIN,
+    },
+  });
+}
 
 const games = {}; // stores the ongoing game
 const winCombinations = [
@@ -19,15 +29,8 @@ const winCombinations = [
   [[0, 2], [1, 1], [2, 0]]
 ]; // game winning combination index
 
-const crypto = require("crypto");
-const randomId = () => crypto.randomBytes(8).toString("hex");
-
-const { InMemorySessionStore } = require("./src/stores/sessionStore");
 const sessionStore = new InMemorySessionStore();
-
-const GameIdStore = require("./src/stores/gameIdStore");
 const gameIdStore = new GameIdStore();
-
 
 io.use((socket, next) => {
   const sessionID = socket.handshake.auth.sessionID;
@@ -209,3 +212,5 @@ function uuidv4() {
     return v.toString(16);
   });
 }
+
+const randomId = () => crypto.randomBytes(8).toString("hex");

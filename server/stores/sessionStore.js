@@ -11,7 +11,7 @@ class InMemorySessionStore extends SessionStore {
   }
 
   findSessionByUserId(userID) {
-    for (const [id, session] of this.sessions) {
+    for (const [, session] of this.sessions) {
       if (session.userID === userID) {
         return session;
       }

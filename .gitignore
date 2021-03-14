@@ -1,5 +1,5 @@
 ./node_modules
 ./.idea
-/api/node_modules/
-/api/.dockerignore
-/api/.editorconfig
+/build
+/node_modules/
+/.idea/
