@@ -1,5 +1,4 @@
 ./node_modules
-./examples
 ./.idea
 /api/node_modules/
 /api/.dockerignore

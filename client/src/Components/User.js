@@ -1,4 +1,4 @@
-
+import './User.css';
 
 function User(props) {
 	if (props.user.self) {
@@ -24,7 +24,7 @@ function User(props) {
 				</div>
 			</div>
 			{props.user.hasOngoingGame && (
-				<div className="new-messages">!</div>
+				<div className="has-ongoing-game">!</div>
 			)}
 		</div>
 	);
