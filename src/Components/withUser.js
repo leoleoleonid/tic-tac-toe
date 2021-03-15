@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from "react";
 import socket from "../socket";
-import events from "../../eventsConfig"
+import events from "../eventsConfig"
 
 const withUser = (WrappedComponent) => {
 	return ({ children }) => {

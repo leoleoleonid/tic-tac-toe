@@ -2,7 +2,7 @@ import React, {Fragment} from 'react';
 import {Table, Row, Col, Button} from 'react-bootstrap';
 import './GameBoard.css';
 import socket from "../socket";
-import events from '../../eventsConfig';
+import events from '../eventsConfig';
 
 function GameBoard(props) {
 

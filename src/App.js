@@ -4,7 +4,7 @@ import GameBoard from './Components/GameBoard';
 import './App.css';
 import {useState, useEffect} from "react";
 import socket from "./socket";
-import events from '../eventsConfig'
+import events from './eventsConfig'
 
 function App() {
   const [selectedUser, setSelectedUser] = useState({});

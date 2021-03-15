@@ -5,7 +5,7 @@ const crypto = require("crypto");
 const { InMemorySessionStore } = require("./server/stores/sessionStore");
 const GameIdStore = require("./server/stores/gameIdStore");
 const socketIo = require("socket.io");
-const events = require("./eventsConfig");
+const events = require("./src/eventsConfig");
 
 let io;
 if(process.env.NODE_ENV === 'production') {
