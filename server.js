@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const { InMemorySessionStore } = require("./server/stores/sessionStore");
 const GameIdStore = require("./server/stores/gameIdStore");
 const socketIo = require("socket.io");
+const events = require("./eventsConfig");
 
 let io;
 if(process.env.NODE_ENV === 'production') {
@@ -53,7 +54,7 @@ io.use((socket, next) => {
   next();
 });
 
-io.on("connection", (socket) => {
+io.on(events.connection, (socket) => {
   // persist session
   sessionStore.saveSession(socket.sessionID, {
     userID: socket.userID,
@@ -62,7 +63,7 @@ io.on("connection", (socket) => {
   });
 
   // emit session details
-  socket.emit("session", {
+  socket.emit(events.session, {
     sessionID: socket.sessionID,
     userID: socket.userID,
   });
@@ -84,17 +85,17 @@ io.on("connection", (socket) => {
       gameData: games[gamesForUser.get(session.userID)]
     });
   });
-  socket.emit("users", users);
+  socket.emit(events.users, users);
 
   // notify existing users
-  socket.broadcast.emit("user connected", {
+  socket.broadcast.emit(events.userConnected, {
     userID: socket.userID,
     username: socket.username,
     connected: true,
     messages: null,
   });
 
-  socket.on("get game", ({ opponent , generateNew}) => {
+  socket.on(events.getGame, ({ opponent , generateNew}) => {
     let gameId;
 
     if (generateNew) {
@@ -112,7 +113,7 @@ io.on("connection", (socket) => {
         player2: opponent,
       };
 
-      io.to(opponent).to(socket.userID).emit("return game data", game);
+      io.to(opponent).to(socket.userID).emit(events.returnGameData, game);
       return;
     }
 
@@ -143,11 +144,11 @@ io.on("connection", (socket) => {
       player2: opponent,
     };
 
-    io.to(opponent).to(socket.userID).emit("return game data", game);
+    io.to(opponent).to(socket.userID).emit(events.returnGameData, game);
     gameIdStore.saveGame(socket.userID, opponent, gameId);
   });
 
-  socket.on('selectCell', data => {
+  socket.on(events.selectCell, data => {
     games[data.gameId].playboard[data.i][data.j] = games[data.gameId][games[data.gameId].whose_turn].sign;
 
     let isDraw = true;
@@ -180,16 +181,16 @@ io.on("connection", (socket) => {
       player2 : games[data.gameId].player2
     };
 
-    io.to(games[data.gameId].player1).to(games[data.gameId].player2).emit("return game data", responseData);
+    io.to(games[data.gameId].player1).to(games[data.gameId].player2).emit(events.returnGameData, responseData);
   });
 
   // notify users upon disconnection
-  socket.on("disconnect", async () => {
+  socket.on(events.disconnect, async () => {
     const matchingSockets = await io.in(socket.userID).allSockets();
     const isDisconnected = matchingSockets.size === 0;
     if (isDisconnected) {
       // notify other users
-      socket.broadcast.emit("user disconnected", socket.userID);
+      socket.broadcast.emit(events.userDisconnected, socket.userID);
       // update the connection status of the session
       sessionStore.saveSession(socket.sessionID, {
         userID: socket.userID,

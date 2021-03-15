@@ -9,7 +9,6 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 socket.onAny((event, ...args) => {
-	console.log("onAny");
 	console.log(event, args);
 });
 

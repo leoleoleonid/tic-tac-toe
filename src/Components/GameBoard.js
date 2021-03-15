@@ -2,11 +2,12 @@ import React, {Fragment} from 'react';
 import {Table, Row, Col, Button} from 'react-bootstrap';
 import './GameBoard.css';
 import socket from "../socket";
+import events from '../../eventsConfig';
 
 function GameBoard(props) {
 
 	const selectCell = (i, j) => {
-		socket.emit('selectCell', { gameId: props.gameId, "i": i, "j": j });
+		socket.emit(events.selectCell, { gameId: props.gameId, "i": i, "j": j });
 	};
 
 	const showGameStatus = () => {
@@ -29,7 +30,6 @@ function GameBoard(props) {
 	};
 
 	const generateCellDOM = () => {
-		console.log(props.gameData);
 		let table = []
 		for (let i = 0; i < 3; i++) {
 			let children = []

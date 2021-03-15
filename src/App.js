@@ -4,13 +4,14 @@ import GameBoard from './Components/GameBoard';
 import './App.css';
 import {useState, useEffect} from "react";
 import socket from "./socket";
+import events from '../eventsConfig'
 
 function App() {
   const [selectedUser, setSelectedUser] = useState({});
   const [users, setUsers] = useState([]);
   useEffect(() => {
 
-    socket.on("connect", () => {
+    socket.on(events.connect, () => {
       const usersNew = [...users];
       usersNew.forEach((user) => {
         if (user.self) {
@@ -20,7 +21,7 @@ function App() {
       setUsers(usersNew);
     });
 
-    socket.on("disconnect", () => {
+    socket.on(events.disconnect, () => {
       const usersNew = [...users];
       usersNew.forEach((user) => {
         if (user.self) {
@@ -30,7 +31,7 @@ function App() {
       setUsers(usersNew);
     });
 
-    socket.on("users", (receivedUsers) => {
+    socket.on(events.users, (receivedUsers) => {
       const newUsers = [...users];
       receivedUsers.forEach((receivedUser) => {
         for (let i = 0; i < newUsers.length; i++) {
@@ -55,7 +56,7 @@ function App() {
       setUsers(newUsers);
     });
 
-    socket.on("user connected", (user) => {
+    socket.on(events.userConnected, (user) => {
       const newUsers = [...users];
       for (let i = 0; i < newUsers.length; i++) {
         const existingUser = newUsers[i];
@@ -70,7 +71,7 @@ function App() {
       setUsers(newUsers);
     });
 
-    socket.on("user disconnected", (id) => {
+    socket.on(events.userDisconnected, (id) => {
       const newUsers = [...users];
       for (let i = 0; i < newUsers.length; i++) {
         const user = newUsers[i];
@@ -82,7 +83,7 @@ function App() {
       setUsers(newUsers);
     });
 
-    socket.on("return game data", ({gameData, gameId, player1, player2}) => {
+    socket.on(events.returnGameData, ({gameData, gameId, player1, player2}) => {
       const newUsers = [...users];
 
       for (let i = 0; i < newUsers.length; i++) {
@@ -102,17 +103,17 @@ function App() {
     });
 
     return () => {
-      socket.off("connect");
-      socket.off("disconnect");
-      socket.off("users");
-      socket.off("user connected");
-      socket.off("user disconnected");
-      socket.off("return game data");
+      socket.off(events.connect);
+      socket.off(events.disconnect);
+      socket.off(events.users);
+      socket.off(events.userConnected);
+      socket.off(events.userDisconnected);
+      socket.off(events.returnGameData);
     }
   }, [selectedUser, users]);
 
   function startNewGame() {
-    socket.emit("get game", {
+    socket.emit(events.getGame, {
       opponent: selectedUser.userID,
       generateNew: true
     });
@@ -120,7 +121,7 @@ function App() {
 
   function onSelectUser(user) {
     const newUsers = [...users];
-    socket.emit("get game", {
+    socket.emit(events.getGame, {
       opponent: user.userID,
       generateNew: false
     });

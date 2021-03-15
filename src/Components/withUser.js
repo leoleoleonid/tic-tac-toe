@@ -1,5 +1,6 @@
 import React, {useState, useEffect} from "react";
 import socket from "../socket";
+import events from "../../eventsConfig"
 
 const withUser = (WrappedComponent) => {
 	return ({ children }) => {
@@ -28,7 +29,7 @@ const withUser = (WrappedComponent) => {
 
 		useEffect(() => {
 
-			socket.on("session", ({ sessionID, userID }) => {
+			socket.on(events.session, ({ sessionID, userID }) => {
 				// attach the session ID to the next reconnection attempts
 				socket.auth = { sessionID };
 				// store it in the localStorage
@@ -37,14 +38,15 @@ const withUser = (WrappedComponent) => {
 				socket.userID = userID;
 			});
 
-			socket.on("connect_error", (err) => {
+			socket.on(events.connectError, (err) => {
 				if (err.message === "invalid username") {
 					setUsernameSelected(false);
 				}
 			});
 
 			return () => {
-				socket.off("connect_error");
+				socket.off(events.session);
+				socket.off(events.connectError);
 			}
 		}, [usernameSelected]);
 
